@@ -1,15 +1,23 @@
 # Tradeable iOS Wrapper
 
-Native iOS framework for embedding Flutter trading widgets in your iOS app.
+Native iOS framework that wraps the Tradeable Flutter SDK module so you can embed Flutter-powered trading widgets in SwiftUI apps.
+
+## Features
+
+- SwiftUI-first embedding API through `TradeableFlutterView`
+- Three display modes: `direct`, `cardFlip`, and `fullscreen`
+- Flutter navigation bridge via `TradeableFlutterNavigator`
+- Authentication/bootstrap bridge using `initializeTFS(...)`
+- Bidirectional data channel between iOS and Flutter
+- Shared Flutter engine management for efficient view reuse
 
 ## Installation
 
-Add to your `Podfile`:
+Add the wrapper pod and Flutter podhelper setup to your app `Podfile`:
 
 ```ruby
 platform :ios, '13.0'
 
-# Setup Flutter first
 flutter_module_path = 'flutter_module'
 
 unless File.exist?(flutter_module_path)
@@ -19,17 +27,12 @@ end
 system("cd #{flutter_module_path} && git pull origin main && flutter pub get")
 
 flutter_podhelper = File.join(flutter_module_path, '.ios', 'Flutter', 'podhelper.rb')
-if File.exist?(flutter_podhelper)
-  load flutter_podhelper
-end
+load flutter_podhelper if File.exist?(flutter_podhelper)
 
 target 'YourApp' do
   use_frameworks!
-  
-  # Install Flutter pods BEFORE other pods
+
   install_all_flutter_pods(flutter_module_path)
-  
-  # Then add tradeableIOSWrapper
   pod 'tradeableIOSWrapper', :git => 'https://github.com/deepakgrandhi/tradeableIOSWrapper.git'
 end
 
@@ -38,23 +41,19 @@ post_install do |installer|
 end
 ```
 
-Then run:
+Install pods:
+
 ```bash
 pod install
 ```
 
-## Usage
+## Quick Start
 
-### Import the Framework
+### 1. Initialize SDK bridge
+
 ```swift
 import tradeableIOSWrapper
-```
 
-### Authentication & Initialization
-
-Before displaying any Flutter widgets, initialize TFS with authentication credentials:
-
-```swift
 let navigator = TradeableFlutterNavigator.shared
 
 navigator.initializeTFS(
@@ -67,81 +66,114 @@ navigator.initializeTFS(
 ) { success, error in
     if success {
         print("TFS initialized successfully")
-        // Now safe to show Flutter widgets
     } else {
         print("TFS initialization failed: \(error ?? "Unknown error")")
     }
 }
 ```
 
-### Check Authentication Status
-```swift
-navigator.isAuthenticated { isAuth in
-    if isAuth {
-        // Show widgets
-    } else {
-        // Redirect to login
-    }
-}
-```
+### 2. Embed Flutter widgets
 
-### Logout
 ```swift
-navigator.logout()
-```
-
-### 1. Direct Display Mode
-```swift
+// Direct mode
 TradeableFlutterView(
     mode: .direct,
     width: 320,
     height: 220,
     data: ["text": "Trading Widget"]
 )
-```
 
-### 2. Card Flip Mode
-```swift
+// Card flip mode
 TradeableFlutterView(
     mode: .cardFlip,
     width: 320,
     height: 220,
     data: ["text": "Tap to Flip"]
 )
-```
 
-### 3. Fullscreen Mode
-```swift
+// Fullscreen mode
 TradeableFlutterView(
     mode: .fullscreen,
-    data: ["text": "Open Fullscreen"]
+    data: ["text": "Open Fullscreen"],
+    topicId: 6
 )
 ```
 
-### Navigation & Data Passing
+### 3. Control navigation and data
+
 ```swift
-// Send data to Flutter
-TradeableFlutterNavigator.shared.sendData(["key": "value"])
+let nav = TradeableFlutterNavigator.shared
 
-// Navigate to a route
-TradeableFlutterNavigator.shared.navigateTo("route_name", arguments: ["arg": "value"])
+nav.navigateTo("/course/details", arguments: ["courseId": "123"])
+nav.replace("/dashboard")
+nav.popToRoot("/")
+nav.goBack()
 
-// Go back
-TradeableFlutterNavigator.shared.goBack()
+nav.sendData(["key": "value"])
+
+nav.registerDataHandler { payload in
+    print("Received from Flutter: \(payload)")
+}
 ```
+
+## API Reference
+
+### TradeableFlutterNavigator
+
+| Method | Description |
+|--------|-------------|
+| `initializeTFS(baseUrl:authToken:portalToken:appId:clientId:publicKey:completion:)` | Sends auth/bootstrap config to Flutter |
+| `navigateTo(_:arguments:)` | Push route in Flutter |
+| `goBack()` | Navigate back in Flutter |
+| `replace(_:arguments:)` | Replace current Flutter route |
+| `popToRoot(_:arguments:)` | Clear stack and navigate to route |
+| `sendData(_:)` | Send arbitrary payload to Flutter |
+| `registerDataHandler(_:)` | Receive payload from Flutter |
+
+### TradeableFlutterView
+
+| Parameter | Type | Description |
+|----------|------|-------------|
+| `mode` | `DisplayMode` | `.direct`, `.cardFlip`, `.fullscreen` |
+| `width` | `CGFloat` | View width (used by direct/card modes) |
+| `height` | `CGFloat` | View height (used by direct/card modes) |
+| `data` | `[String: Any]` | Initial payload sent to Flutter |
+| `topicId` | `Int?` | Optional topic identifier forwarded to Flutter |
 
 ## Requirements
 
 - iOS 13.0+
-- Xcode 14.0+
 - Swift 5.0+
-- Flutter SDK installed
+- Xcode 14+
+- Flutter SDK available on machine running `pod install`
 
-## Quick Test
+## Project Structure
 
-To test this framework immediately, provide consumers:
-1. **Repository URL**: `https://github.com/deepakgrandhi/tradeableIOSWrapper.git`
-2. **Sample Podfile** (see Installation section above)
-3. **Sample Code** (see Usage section above)
+```text
+tradeableIOSWrapper/
+├── tradeableIOSWrapper/
+│   ├── TradeableFlutterView.swift
+│   ├── TradeableFlutterNavigator.swift
+│   ├── FlutterEngineHolder.swift
+│   └── tradeableIOSWrapper.h
+├── flutter_module/
+├── Podfile
+└── tradeableIOSWrapper.podspec
+```
 
-Consumers can create a new iOS app and add the framework using the Podfile configuration.
+## Troubleshooting
+
+### Flutter UI not appearing
+
+1. Confirm `install_all_flutter_pods(flutter_module_path)` is in your target.
+2. Re-run `pod install` after Flutter module changes.
+3. Verify `initializeTFS(...)` is called before showing widgets.
+
+### Navigation or channel callbacks not firing
+
+1. Ensure route/method names match Flutter-side handlers.
+2. Check Xcode logs for `[TFS]` messages emitted by wrapper classes.
+
+## License
+
+MIT

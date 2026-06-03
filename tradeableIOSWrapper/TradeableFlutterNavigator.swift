@@ -63,24 +63,6 @@ public class TradeableFlutterNavigator {
         }
     }
     
-    /// Check if user is authenticated
-    public func isAuthenticated(completion: @escaping (Bool) -> Void) {
-        print("[TFS] Checking if user is authenticated")
-        authChannel.invokeMethod("isAuthenticated", arguments: nil) { result in
-            let isAuth = result as? Bool ?? false
-            print("[TFS] isAuthenticated result: \(isAuth)")
-            completion(isAuth)
-        }
-    }
-    
-    /// Logout user
-    public func logout() {
-        print("[TFS] logout called")
-        authChannel.invokeMethod("logout", arguments: nil) { result in
-            print("[TFS] logout completed")
-        }
-    }
-    
     // MARK: - Navigation
     
     /// Navigate to a specific route in Flutter
