@@ -114,12 +114,12 @@ public struct TradeableFlutterView: View {
                 .cornerRadius(10)
             }
         }
-        .fullScreenCover(isPresented: $showFullscreen) {
-            FlutterFullscreenView(
+        .background(
+            FullscreenPresenter(
                 isPresented: $showFullscreen,
                 data: prepareData(mode: "fullscreen")
             )
-        }
+        )
     }
     
     // MARK: - Helper
@@ -187,6 +187,31 @@ struct FlutterFullscreenView: View {
                     .clipShape(Circle())
             }
             .padding()
+        }
+    }
+}
+
+struct FullscreenPresenter: UIViewControllerRepresentable {
+    @Binding var isPresented: Bool
+    let data: [String: Any]
+
+    func makeUIViewController(context: Context) -> UIViewController {
+        UIViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        if isPresented {
+            guard uiViewController.presentedViewController == nil else { return }
+
+            let hostedView = FlutterFullscreenView(
+                isPresented: $isPresented,
+                data: data
+            )
+            let controller = UIHostingController(rootView: hostedView)
+            controller.modalPresentationStyle = .fullScreen
+            uiViewController.present(controller, animated: true)
+        } else if uiViewController.presentedViewController != nil {
+            uiViewController.dismiss(animated: true)
         }
     }
 }
