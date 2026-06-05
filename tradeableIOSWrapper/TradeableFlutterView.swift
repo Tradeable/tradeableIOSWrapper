@@ -1,12 +1,78 @@
 import SwiftUI
 import Flutter
 
+final class FlutterHostChannelDispatcher {
+    static let shared = FlutterHostChannelDispatcher()
+
+    private var channel: FlutterMethodChannel?
+    private var isInstalled = false
+
+    private var closeCardHandler: (() -> Void)?
+    private var closeFullscreenHandler: (() -> Void)?
+    private var closeSideDrawerHandler: (() -> Void)?
+
+    private init() {}
+
+    func install(binaryMessenger: FlutterBinaryMessenger) {
+        guard !isInstalled else { return }
+        let methodChannel = FlutterMethodChannel(
+            name: "embedded_flutter",
+            binaryMessenger: binaryMessenger
+        )
+        methodChannel.setMethodCallHandler { [weak self] call, _ in
+            self?.handle(call: call)
+        }
+        channel = methodChannel
+        isInstalled = true
+    }
+
+    func updateHandlers(
+        onCloseCard: (() -> Void)? = nil,
+        onCloseFullscreen: (() -> Void)? = nil,
+        onCloseSideDrawer: (() -> Void)? = nil
+    ) {
+        if let onCloseCard {
+            closeCardHandler = onCloseCard
+        }
+        if let onCloseFullscreen {
+            closeFullscreenHandler = onCloseFullscreen
+        }
+        if let onCloseSideDrawer {
+            closeSideDrawerHandler = onCloseSideDrawer
+        }
+    }
+
+    func sendSetData(arguments: [String: Any]) {
+        channel?.invokeMethod("setData", arguments: arguments)
+    }
+
+    private func handle(call: FlutterMethodCall) {
+        switch call.method {
+        case "closeCard":
+            FlutterEngineHolder.shared.detachController()
+            if let closeCardHandler {
+                closeCardHandler()
+            } else {
+                closeFullscreenHandler?()
+            }
+        case "closeFullscreen":
+            FlutterEngineHolder.shared.detachController()
+            closeFullscreenHandler?()
+        case "closeSideDrawer":
+            closeSideDrawerHandler?()
+        default:
+            break
+        }
+    }
+}
+
 /// Public API for consumers to embed Flutter views
 public struct TradeableFlutterView: View {
     public enum DisplayMode {
         case direct
         case cardFlip
         case fullscreen
+        case sideDrawer
     }
     
     let mode: DisplayMode
@@ -14,6 +80,8 @@ public struct TradeableFlutterView: View {
     let height: CGFloat
     let data: [String: Any]
     let topicId: Int?
+    let pageId: Int?
+    let onCloseSideDrawer: (() -> Void)?
     
     @State private var isCardFlipped = false
     @State private var showFullscreen = false
@@ -23,13 +91,17 @@ public struct TradeableFlutterView: View {
         width: CGFloat = 320,
         height: CGFloat = 220,
         data: [String: Any] = [:],
-        topicId: Int? = nil
+        topicId: Int? = nil,
+        pageId: Int? = nil,
+        onCloseSideDrawer: (() -> Void)? = nil
     ) {
         self.mode = mode
         self.width = width
         self.height = height
         self.data = data
         self.topicId = topicId
+        self.pageId = pageId
+        self.onCloseSideDrawer = onCloseSideDrawer
     }
     
     public var body: some View {
@@ -40,6 +112,8 @@ public struct TradeableFlutterView: View {
             cardFlipView
         case .fullscreen:
             fullscreenButtonView
+        case .sideDrawer:
+            sideDrawerContentView
         }
     }
     
@@ -121,6 +195,14 @@ public struct TradeableFlutterView: View {
             )
         )
     }
+
+    private var sideDrawerContentView: some View {
+        FlutterContainer(
+            initialData: prepareData(mode: "nativeSideDrawer"),
+            onCloseSideDrawer: onCloseSideDrawer
+        )
+        .frame(width: width, height: height)
+    }
     
     // MARK: - Helper
     private func prepareData(mode: String) -> [String: Any] {
@@ -131,6 +213,9 @@ public struct TradeableFlutterView: View {
         if let topicId = topicId {
             finalData["topicId"] = topicId
         }
+        if let pageId = pageId {
+            finalData["pageId"] = pageId
+        }
         return finalData
     }
 }
@@ -139,24 +224,19 @@ public struct TradeableFlutterView: View {
 struct FlutterContainer: UIViewControllerRepresentable {
     let initialData: [String: Any]
     var onClose: (() -> Void)? = nil
+    var onCloseSideDrawer: (() -> Void)? = nil
     
     func makeUIViewController(context: Context) -> FlutterViewController {
         let controller = FlutterEngineHolder.shared.makeController()
         controller.view.backgroundColor = .clear
-        
-        let channel = FlutterMethodChannel(
-            name: "embedded_flutter",
-            binaryMessenger: controller.binaryMessenger
+
+        let dispatcher = FlutterHostChannelDispatcher.shared
+        dispatcher.install(binaryMessenger: controller.binaryMessenger)
+        dispatcher.updateHandlers(
+            onCloseCard: onClose,
+            onCloseSideDrawer: onCloseSideDrawer
         )
-        
-        channel.setMethodCallHandler { call, _ in
-            if call.method == "closeCard" {
-                FlutterEngineHolder.shared.detachController()
-                onClose?()
-            }
-        }
-        
-        channel.invokeMethod("setData", arguments: initialData)
+        dispatcher.sendSetData(arguments: initialData)
         return controller
     }
     
@@ -222,20 +302,11 @@ struct FlutterFullscreenContainer: UIViewControllerRepresentable {
     
     func makeUIViewController(context: Context) -> FlutterViewController {
         let controller = FlutterEngineHolder.shared.makeController()
-        
-        let channel = FlutterMethodChannel(
-            name: "embedded_flutter",
-            binaryMessenger: controller.binaryMessenger
-        )
-        
-        channel.setMethodCallHandler { call, _ in
-            if call.method == "closeFullscreen" || call.method == "closeCard" {
-                FlutterEngineHolder.shared.detachController()
-                onClose()
-            }
-        }
-        
-        channel.invokeMethod("setData", arguments: initialData)
+
+        let dispatcher = FlutterHostChannelDispatcher.shared
+        dispatcher.install(binaryMessenger: controller.binaryMessenger)
+        dispatcher.updateHandlers(onCloseFullscreen: onClose)
+        dispatcher.sendSetData(arguments: initialData)
         return controller
     }
     
