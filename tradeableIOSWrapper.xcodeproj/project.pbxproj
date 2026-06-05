@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2FC04B2F2755E22187B27E4F /* Pods_tradeableIOSWrapper.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 825AF90AE0A4958FD728DD51 /* Pods_tradeableIOSWrapper.framework */; };
+		2F4DB30C38C2D9C56660F26F /* Pods_tradeableIOSWrapper.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3EF6C6F352FAD338B8D19CB9 /* Pods_tradeableIOSWrapper.framework */; };
 		A70BE7A42F14F04E00A17B73 /* tradeableIOSWrapper.docc in Sources */ = {isa = PBXBuildFile; fileRef = A70BE7A32F14F04E00A17B73 /* tradeableIOSWrapper.docc */; };
 		A70BE7AA2F14F04E00A17B73 /* tradeableIOSWrapper.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A70BE79F2F14F04E00A17B73 /* tradeableIOSWrapper.framework */; };
 		A70BE7AF2F14F04E00A17B73 /* tradeableIOSWrapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A70BE7AE2F14F04E00A17B73 /* tradeableIOSWrapperTests.swift */; };
@@ -28,9 +28,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		6A839DC96BAE1255CC521E63 /* Pods-tradeableIOSWrapper.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-tradeableIOSWrapper.release.xcconfig"; path = "Target Support Files/Pods-tradeableIOSWrapper/Pods-tradeableIOSWrapper.release.xcconfig"; sourceTree = "<group>"; };
-		825AF90AE0A4958FD728DD51 /* Pods_tradeableIOSWrapper.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_tradeableIOSWrapper.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		A6819F2C8DE4C3821BB37FC5 /* Pods-tradeableIOSWrapper.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-tradeableIOSWrapper.debug.xcconfig"; path = "Target Support Files/Pods-tradeableIOSWrapper/Pods-tradeableIOSWrapper.debug.xcconfig"; sourceTree = "<group>"; };
+		1771206BD8EAFD84F8CDE187 /* Pods-tradeableIOSWrapper.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-tradeableIOSWrapper.debug.xcconfig"; path = "Target Support Files/Pods-tradeableIOSWrapper/Pods-tradeableIOSWrapper.debug.xcconfig"; sourceTree = "<group>"; };
+		3EF6C6F352FAD338B8D19CB9 /* Pods_tradeableIOSWrapper.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_tradeableIOSWrapper.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		4451CEA8DABF6122DC8B6CD1 /* Pods-tradeableIOSWrapper.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-tradeableIOSWrapper.release.xcconfig"; path = "Target Support Files/Pods-tradeableIOSWrapper/Pods-tradeableIOSWrapper.release.xcconfig"; sourceTree = "<group>"; };
 		A70BE79F2F14F04E00A17B73 /* tradeableIOSWrapper.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = tradeableIOSWrapper.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A70BE7A22F14F04E00A17B73 /* tradeableIOSWrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tradeableIOSWrapper.h; sourceTree = "<group>"; };
 		A70BE7A32F14F04E00A17B73 /* tradeableIOSWrapper.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = tradeableIOSWrapper.docc; sourceTree = "<group>"; };
@@ -46,7 +46,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2FC04B2F2755E22187B27E4F /* Pods_tradeableIOSWrapper.framework in Frameworks */,
+				2F4DB30C38C2D9C56660F26F /* Pods_tradeableIOSWrapper.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -64,8 +64,8 @@
 		566DAB93C2F07B5F2A25EEDC /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				A6819F2C8DE4C3821BB37FC5 /* Pods-tradeableIOSWrapper.debug.xcconfig */,
-				6A839DC96BAE1255CC521E63 /* Pods-tradeableIOSWrapper.release.xcconfig */,
+				1771206BD8EAFD84F8CDE187 /* Pods-tradeableIOSWrapper.debug.xcconfig */,
+				4451CEA8DABF6122DC8B6CD1 /* Pods-tradeableIOSWrapper.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -77,7 +77,7 @@
 				A70BE7AD2F14F04E00A17B73 /* tradeableIOSWrapperTests */,
 				A70BE7A02F14F04E00A17B73 /* Products */,
 				566DAB93C2F07B5F2A25EEDC /* Pods */,
-				C3860C41C79DD4BF1134CC6D /* Frameworks */,
+				D52FC686164480EB1EF9946F /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -110,10 +110,10 @@
 			path = tradeableIOSWrapperTests;
 			sourceTree = "<group>";
 		};
-		C3860C41C79DD4BF1134CC6D /* Frameworks */ = {
+		D52FC686164480EB1EF9946F /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				825AF90AE0A4958FD728DD51 /* Pods_tradeableIOSWrapper.framework */,
+				3EF6C6F352FAD338B8D19CB9 /* Pods_tradeableIOSWrapper.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -136,13 +136,13 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A70BE7B32F14F04E00A17B73 /* Build configuration list for PBXNativeTarget "tradeableIOSWrapper" */;
 			buildPhases = (
-				8A37D29696714AFB810897B8 /* [CP] Check Pods Manifest.lock */,
+				2C4EEF3EE5AA1168DE707B49 /* [CP] Check Pods Manifest.lock */,
 				A70BE79A2F14F04E00A17B73 /* Headers */,
-				77D11F479242F06B13E59A88 /* [CP-User] Run Flutter Build tradeable_flutter_sdk Script */,
+				3FC2961842CDF62AAA1CC370 /* [CP-User] Run Flutter Build tradeable_flutter_sdk Script */,
 				A70BE79B2F14F04E00A17B73 /* Sources */,
 				A70BE79C2F14F04E00A17B73 /* Frameworks */,
 				A70BE79D2F14F04E00A17B73 /* Resources */,
-				29AF9002BC095482EE76545B /* [CP-User] Embed Flutter Build tradeable_flutter_sdk Script */,
+				83E38CC7061505E53D13E33B /* [CP-User] Embed Flutter Build tradeable_flutter_sdk Script */,
 			);
 			buildRules = (
 			);
@@ -226,27 +226,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		29AF9002BC095482EE76545B /* [CP-User] Embed Flutter Build tradeable_flutter_sdk Script */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			name = "[CP-User] Embed Flutter Build tradeable_flutter_sdk Script";
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -e\nset -u\nsource \"${SRCROOT}/flutter_module/.ios/Flutter/flutter_export_environment.sh\"\nexport VERBOSE_SCRIPT_LOGGING=1 && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/xcode_backend.sh embed_and_thin";
-		};
-		77D11F479242F06B13E59A88 /* [CP-User] Run Flutter Build tradeable_flutter_sdk Script */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			name = "[CP-User] Run Flutter Build tradeable_flutter_sdk Script";
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -e\nset -u\nsource \"${SRCROOT}/flutter_module/.ios/Flutter/flutter_export_environment.sh\"\nexport VERBOSE_SCRIPT_LOGGING=1 && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/xcode_backend.sh build";
-		};
-		8A37D29696714AFB810897B8 /* [CP] Check Pods Manifest.lock */ = {
+		2C4EEF3EE5AA1168DE707B49 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -267,6 +247,26 @@
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
+		};
+		3FC2961842CDF62AAA1CC370 /* [CP-User] Run Flutter Build tradeable_flutter_sdk Script */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "[CP-User] Run Flutter Build tradeable_flutter_sdk Script";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nset -u\nsource \"${SRCROOT}/flutter_module/.ios/Flutter/flutter_export_environment.sh\"\nexport VERBOSE_SCRIPT_LOGGING=1 && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/xcode_backend.sh build";
+		};
+		83E38CC7061505E53D13E33B /* [CP-User] Embed Flutter Build tradeable_flutter_sdk Script */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "[CP-User] Embed Flutter Build tradeable_flutter_sdk Script";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nset -u\nsource \"${SRCROOT}/flutter_module/.ios/Flutter/flutter_export_environment.sh\"\nexport VERBOSE_SCRIPT_LOGGING=1 && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/xcode_backend.sh embed_and_thin";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -428,7 +428,7 @@
 		};
 		A70BE7B42F14F04E00A17B73 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A6819F2C8DE4C3821BB37FC5 /* Pods-tradeableIOSWrapper.debug.xcconfig */;
+			baseConfigurationReference = 1771206BD8EAFD84F8CDE187 /* Pods-tradeableIOSWrapper.debug.xcconfig */;
 			buildSettings = {
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CODE_SIGN_STYLE = Automatic;
@@ -463,7 +463,7 @@
 		};
 		A70BE7B52F14F04E00A17B73 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 6A839DC96BAE1255CC521E63 /* Pods-tradeableIOSWrapper.release.xcconfig */;
+			baseConfigurationReference = 4451CEA8DABF6122DC8B6CD1 /* Pods-tradeableIOSWrapper.release.xcconfig */;
 			buildSettings = {
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CODE_SIGN_STYLE = Automatic;

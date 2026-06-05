@@ -90,6 +90,19 @@ public class TradeableFlutterNavigator {
             print("[TFS] goBack completed")
         }
     }
+
+    /// Open the Tradeable side drawer for a given page id.
+    /// - Parameters:
+    ///   - pageId: The page or topic tag id to render in the drawer.
+    ///   - arguments: Optional extra data to forward to Flutter.
+    public func openTradeableSideDrawer(pageId: Int, arguments: [String: Any]? = nil) {
+        print("[TFS] openTradeableSideDrawer: \(pageId)")
+        var params: [String: Any] = arguments ?? [:]
+        params["pageId"] = pageId
+        methodChannel.invokeMethod("openTradeableSideDrawer", arguments: params) { result in
+            print("[TFS] openTradeableSideDrawer completed for pageId: \(pageId)")
+        }
+    }
     
     /// Replace current route with a new one
     /// - Parameters:

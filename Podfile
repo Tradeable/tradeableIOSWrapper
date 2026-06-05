@@ -14,7 +14,7 @@ target 'tradeableIOSWrapper' do
   end
   
   # Pull latest from main
-  system("cd #{flutter_module_path} && git pull origin main")
+  system("cd #{flutter_module_path} && git pull origin sidedrawer_task")
   
   # Initialize Flutter module dependencies only (without building frameworks)
   system("cd #{flutter_module_path} && flutter pub get")

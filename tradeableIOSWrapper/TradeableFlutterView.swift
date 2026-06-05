@@ -114,7 +114,7 @@ public struct TradeableFlutterView: View {
                 .cornerRadius(10)
             }
         }
-        .sheet(isPresented: $showFullscreen) {
+        .fullScreenCover(isPresented: $showFullscreen) {
             FlutterFullscreenView(
                 isPresented: $showFullscreen,
                 data: prepareData(mode: "fullscreen")
@@ -204,7 +204,7 @@ struct FlutterFullscreenContainer: UIViewControllerRepresentable {
         )
         
         channel.setMethodCallHandler { call, _ in
-            if call.method == "closeFullscreen" {
+            if call.method == "closeFullscreen" || call.method == "closeCard" {
                 FlutterEngineHolder.shared.detachController()
                 onClose()
             }
