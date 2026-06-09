@@ -5,7 +5,7 @@ Native iOS framework that wraps the Tradeable Flutter SDK module so you can embe
 ## Features
 
 - SwiftUI-first embedding API through `TradeableFlutterView`
-- Three display modes: `direct`, `cardFlip`, and `fullscreen`
+- Display modes: `direct`, `cardFlip`, `fullscreen`, `sideDrawer`, `fullscreenContent`, `dashboardContent`
 - Flutter navigation bridge via `TradeableFlutterNavigator`
 - Authentication/bootstrap bridge using `initializeTFS(...)`
 - Bidirectional data channel between iOS and Flutter
@@ -97,6 +97,85 @@ TradeableFlutterView(
     data: ["text": "Open Fullscreen"],
     topicId: 6
 )
+
+// Side drawer mode (content hosted in native drawer)
+TradeableFlutterView(
+    mode: .sideDrawer,
+    width: 360,
+    height: 720,
+    data: ["text": "Native Side Drawer"],
+    pageId: 6,
+    onCloseSideDrawer: {
+        // close your native drawer state
+    }
+)
+
+// Fullscreen content modes (opened by native host)
+TradeableFlutterView(
+    mode: .fullscreenContent,
+    topicId: 6,
+    onCloseFullscreen: {
+        // dismiss native fullscreen host
+    }
+)
+
+TradeableFlutterView(
+    mode: .dashboardContent,
+    onCloseFullscreen: {
+        // dismiss native fullscreen host
+    }
+)
+```
+
+### 2a. Native Side Nav Implementation (SwiftUI)
+
+```swift
+@State private var showNativeDrawer = false
+@State private var presentedScreen: PresentedTradeableScreen?
+
+ZStack(alignment: .trailing) {
+    // your screen content
+
+    if showNativeDrawer {
+        Color.black.opacity(0.25)
+            .ignoresSafeArea()
+            .onTapGesture { showNativeDrawer = false }
+
+        TradeableFlutterView(
+            mode: .sideDrawer,
+            width: proxy.size.width - 32,
+            height: proxy.size.height,
+            pageId: 6,
+            onCloseSideDrawer: { showNativeDrawer = false }
+        )
+        .background(Color.white)
+        .frame(width: proxy.size.width - 32, height: proxy.size.height)
+        .transition(.move(edge: .trailing))
+    }
+}
+.fullScreenCover(item: $presentedScreen) { screen in
+    switch screen {
+    case .topic(let topicId):
+        TradeableFlutterView(mode: .fullscreenContent, topicId: topicId)
+    case .dashboard:
+        TradeableFlutterView(mode: .dashboardContent)
+    }
+}
+.onAppear {
+    TradeableFlutterNavigator.shared.registerDataHandler { payload in
+        guard let action = payload["action"] as? String else { return }
+        showNativeDrawer = false
+
+        switch action {
+        case "openTopic":
+            if let topicId = payload["topicId"] as? Int { presentedScreen = .topic(topicId) }
+        case "openDashboard":
+            presentedScreen = .dashboard
+        default:
+            break
+        }
+    }
+}
 ```
 
 ### 3. Control navigation and data
@@ -116,6 +195,31 @@ nav.registerDataHandler { payload in
 }
 ```
 
+### Method Channel Contract (for host apps)
+
+Channels:
+
+- `embedded_flutter`
+- `embedded_flutter/auth`
+- `embedded_flutter/navigation`
+
+Host -> Flutter:
+
+- `embedded_flutter.setData`
+- `embedded_flutter/auth.initializeTFS`
+- `embedded_flutter/navigation.openTradeableSideDrawer`
+- `embedded_flutter/navigation.navigateTo`
+- `embedded_flutter/navigation.replaceRoute`
+- `embedded_flutter/navigation.popToRoot`
+- `embedded_flutter/navigation.receiveData`
+
+Flutter -> Host:
+
+- `embedded_flutter.closeCard`
+- `embedded_flutter.closeFullscreen`
+- `embedded_flutter.closeSideDrawer`
+- `embedded_flutter/navigation.sendData` (examples: `openTopic`, `openDashboard`)
+
 ## API Reference
 
 ### TradeableFlutterNavigator
@@ -134,11 +238,14 @@ nav.registerDataHandler { payload in
 
 | Parameter | Type | Description |
 |----------|------|-------------|
-| `mode` | `DisplayMode` | `.direct`, `.cardFlip`, `.fullscreen` |
+| `mode` | `DisplayMode` | `.direct`, `.cardFlip`, `.fullscreen`, `.sideDrawer`, `.fullscreenContent`, `.dashboardContent` |
 | `width` | `CGFloat` | View width (used by direct/card modes) |
 | `height` | `CGFloat` | View height (used by direct/card modes) |
 | `data` | `[String: Any]` | Initial payload sent to Flutter |
 | `topicId` | `Int?` | Optional topic identifier forwarded to Flutter |
+| `pageId` | `Int?` | Optional page identifier for drawer content |
+| `onCloseSideDrawer` | `(() -> Void)?` | Called when Flutter asks host to close drawer |
+| `onCloseFullscreen` | `(() -> Void)?` | Called when Flutter asks host to close fullscreen |
 
 ## Requirements
 
