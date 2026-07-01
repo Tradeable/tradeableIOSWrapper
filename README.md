@@ -2,6 +2,9 @@
 
 Native iOS framework that wraps the Tradeable Flutter SDK module so you can embed Flutter-powered trading widgets in SwiftUI apps.
 
+## change log
+- added new user progress widget
+
 ## Features
 
 - SwiftUI-first embedding API through `TradeableFlutterView`
@@ -125,6 +128,17 @@ TradeableFlutterView(
         // dismiss native fullscreen host
     }
 )
+
+// user progress widget
+TradeableFlutterView(
+    mode: .userProgressContent,
+    width: ,
+    height: ,
+    onCloseFullscreen: {
+        // dismiss native fullscreen host
+        presentedScreen = nil
+    }
+)                        
 ```
 
 ### 2a. Native Side Nav Implementation (SwiftUI)
