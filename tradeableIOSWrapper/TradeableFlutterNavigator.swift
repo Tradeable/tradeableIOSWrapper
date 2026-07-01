@@ -14,12 +14,22 @@ public class TradeableFlutterNavigator {
     
     private lazy var methodChannel = FlutterMethodChannel(
         name: "embedded_flutter/navigation",
-        binaryMessenger: FlutterEngineHolder.shared.engine.binaryMessenger
+        binaryMessenger: FlutterEngineHolder.shared.embeddedEngine.binaryMessenger
+    )
+
+    private lazy var fullscreenMethodChannel = FlutterMethodChannel(
+        name: "embedded_flutter/navigation",
+        binaryMessenger: FlutterEngineHolder.shared.fullscreenEngine.binaryMessenger
     )
     
     private lazy var authChannel = FlutterMethodChannel(
         name: "embedded_flutter/auth",
-        binaryMessenger: FlutterEngineHolder.shared.engine.binaryMessenger
+        binaryMessenger: FlutterEngineHolder.shared.embeddedEngine.binaryMessenger
+    )
+
+    private lazy var fullscreenAuthChannel = FlutterMethodChannel(
+        name: "embedded_flutter/auth",
+        binaryMessenger: FlutterEngineHolder.shared.fullscreenEngine.binaryMessenger
     )
     
     private init() {
@@ -49,16 +59,30 @@ public class TradeableFlutterNavigator {
             "publicKey": publicKey
         ]
         
-        authChannel.invokeMethod("initializeTFS", arguments: params) { result in
-            if let error = result as? FlutterError {
-                print("[TFS] ❌ initializeTFS failed: \(error.message ?? "Unknown error")")
-                completion(false, error.message)
-            } else if let success = result as? Bool {
-                print("[TFS] ✅ initializeTFS succeeded")
-                completion(success, nil)
-            } else {
-                print("[TFS] ✅ initializeTFS completed")
-                completion(true, nil)
+        let authChannels = [authChannel, fullscreenAuthChannel]
+        var pendingResponses = authChannels.count
+        var firstError: String?
+        var allSucceeded = true
+
+        for channel in authChannels {
+            channel.invokeMethod("initializeTFS", arguments: params) { result in
+                if let error = result as? FlutterError {
+                    print("[TFS] ❌ initializeTFS failed: \(error.message ?? "Unknown error")")
+                    firstError = firstError ?? error.message
+                    allSucceeded = false
+                } else if let success = result as? Bool, !success {
+                    allSucceeded = false
+                }
+
+                pendingResponses -= 1
+                if pendingResponses == 0 {
+                    if allSucceeded {
+                        print("[TFS] ✅ initializeTFS succeeded")
+                        completion(true, nil)
+                    } else {
+                        completion(false, firstError)
+                    }
+                }
             }
         }
     }
@@ -154,14 +178,18 @@ public class TradeableFlutterNavigator {
     /// - Parameter handler: Closure called when Flutter sends data
     public func registerDataHandler(_ handler: @escaping ([String: Any]) -> Void) {
         print("[TFS] registerDataHandler called")
-        methodChannel.setMethodCallHandler { call, result in
-            if call.method == "sendData" {
-                print("[TFS] Received data from Flutter: \(call.arguments ?? [:])")
-                if let arguments = call.arguments as? [String: Any] {
-                    handler(arguments)
+        let channels = [methodChannel, fullscreenMethodChannel]
+
+        for channel in channels {
+            channel.setMethodCallHandler { call, result in
+                if call.method == "sendData" {
+                    print("[TFS] Received data from Flutter: \(call.arguments ?? [:])")
+                    if let arguments = call.arguments as? [String: Any] {
+                        handler(arguments)
+                    }
                 }
+                result(nil)
             }
-            result(nil)
         }
     }
 }

@@ -4,8 +4,12 @@ import Flutter
 final class FlutterHostChannelDispatcher {
     static let shared = FlutterHostChannelDispatcher()
 
-    private var channel: FlutterMethodChannel?
-    private var isInstalled = false
+    enum ChannelKind {
+        case embedded
+        case fullscreen
+    }
+
+    private var channels: [ChannelKind: FlutterMethodChannel] = [:]
 
     private var closeCardHandler: (() -> Void)?
     private var closeFullscreenHandler: (() -> Void)?
@@ -13,44 +17,43 @@ final class FlutterHostChannelDispatcher {
 
     private init() {}
 
-    func install(binaryMessenger: FlutterBinaryMessenger) {
-        guard !isInstalled else { return }
+    func install(binaryMessenger: FlutterBinaryMessenger, kind: ChannelKind) {
         let methodChannel = FlutterMethodChannel(
             name: "embedded_flutter",
             binaryMessenger: binaryMessenger
         )
         methodChannel.setMethodCallHandler { [weak self] call, _ in
-            self?.handle(call: call)
+            self?.handle(call: call, kind: kind)
         }
-        channel = methodChannel
-        isInstalled = true
+        channels[kind] = methodChannel
     }
 
     func updateHandlers(
+        kind: ChannelKind,
         onCloseCard: (() -> Void)? = nil,
         onCloseFullscreen: (() -> Void)? = nil,
         onCloseSideDrawer: (() -> Void)? = nil
     ) {
-        if let onCloseCard {
+        if kind == .embedded, let onCloseCard {
             closeCardHandler = onCloseCard
         }
-        if let onCloseFullscreen {
+        if kind == .fullscreen, let onCloseFullscreen {
             closeFullscreenHandler = onCloseFullscreen
         }
-        if let onCloseSideDrawer {
+        if kind == .embedded, let onCloseSideDrawer {
             closeSideDrawerHandler = onCloseSideDrawer
         }
     }
 
-    func sendSetData(arguments: [String: Any]) {
-        channel?.invokeMethod("setData", arguments: arguments)
+    func sendSetData(arguments: [String: Any], kind: ChannelKind) {
+        channels[kind]?.invokeMethod("setData", arguments: arguments)
     }
 
-    private func handle(call: FlutterMethodCall) {
+    private func handle(call: FlutterMethodCall, kind: ChannelKind) {
         switch call.method {
         case "closeCard":
             DispatchQueue.main.async {
-                FlutterEngineHolder.shared.detachController()
+                FlutterEngineHolder.shared.detachController(for: .embedded)
                 if let closeCardHandler = self.closeCardHandler {
                     closeCardHandler()
                 } else {
@@ -59,12 +62,12 @@ final class FlutterHostChannelDispatcher {
             }
         case "closeFullscreen":
             DispatchQueue.main.async {
-                FlutterEngineHolder.shared.detachController()
+                FlutterEngineHolder.shared.detachController(for: .fullscreen)
                 self.closeFullscreenHandler?()
             }
         case "closeSideDrawer":
             DispatchQueue.main.async {
-                self.closeSideDrawerHandler?()
+                self.closeSideDrawerHandler?()  
             }
         default:
             break
@@ -79,8 +82,11 @@ public struct TradeableFlutterView: View {
         case cardFlip
         case fullscreen
         case fullscreenContent
+        case courseDetailsContent
         case dashboardContent
         case sideDrawer
+        case userProgress
+        case userProgressContent
     }
     
     let mode: DisplayMode
@@ -89,6 +95,7 @@ public struct TradeableFlutterView: View {
     let data: [String: Any]
     let topicId: Int?
     let pageId: Int?
+    let courseId: Int?
     let onCloseSideDrawer: (() -> Void)?
     let onCloseFullscreen: (() -> Void)?
     
@@ -102,15 +109,20 @@ public struct TradeableFlutterView: View {
         data: [String: Any] = [:],
         topicId: Int? = nil,
         pageId: Int? = nil,
+        courseId: Int? = nil,
         onCloseSideDrawer: (() -> Void)? = nil,
         onCloseFullscreen: (() -> Void)? = nil
     ) {
+        let usesDefaultSize = width == 320 && height == 220
+        let resolvedHeight = mode == .userProgress && usesDefaultSize ? 360 : height
+
         self.mode = mode
         self.width = width
-        self.height = height
+        self.height = resolvedHeight
         self.data = data
         self.topicId = topicId
         self.pageId = pageId
+        self.courseId = courseId
         self.onCloseSideDrawer = onCloseSideDrawer
         self.onCloseFullscreen = onCloseFullscreen
     }
@@ -125,10 +137,16 @@ public struct TradeableFlutterView: View {
             fullscreenButtonView
         case .fullscreenContent:
             fullscreenContentView
+        case .courseDetailsContent:
+            courseDetailsContentView
         case .dashboardContent:
             dashboardContentView
         case .sideDrawer:
             sideDrawerContentView
+        case .userProgress:
+            userProgressView
+        case .userProgressContent:
+            userProgressContentView
         }
     }
     
@@ -255,6 +273,33 @@ public struct TradeableFlutterView: View {
         )
         .frame(width: width, height: height)
     }
+
+    private var courseDetailsContentView: some View {
+        FlutterFullscreenContainer(
+            initialData: prepareData(mode: "courseDetailsScreen"),
+            onClose: {
+                onCloseFullscreen?()
+            }
+        )
+        .frame(width: width, height: height)
+    }
+
+    private var userProgressView: some View {
+        FlutterContainer(
+            initialData: prepareData(mode: "userProgress")
+        )
+        .frame(width: width, height: height)
+    }
+
+    private var userProgressContentView: some View {
+        FlutterFullscreenContainer(
+            initialData: prepareData(mode: "userProgressScreen"),
+            onClose: {
+                onCloseFullscreen?()
+            }
+        )
+        .frame(width: width, height: height)
+    }
     
     // MARK: - Helper
     private func prepareData(mode: String) -> [String: Any] {
@@ -268,6 +313,9 @@ public struct TradeableFlutterView: View {
         if let pageId = pageId {
             finalData["pageId"] = pageId
         }
+        if let courseId = courseId {
+            finalData["courseId"] = courseId
+        }
         return finalData
     }
 }
@@ -279,16 +327,17 @@ struct FlutterContainer: UIViewControllerRepresentable {
     var onCloseSideDrawer: (() -> Void)? = nil
     
     func makeUIViewController(context: Context) -> FlutterViewController {
-        let controller = FlutterEngineHolder.shared.makeController()
+        let controller = FlutterEngineHolder.shared.makeController(for: .embedded)
         controller.view.backgroundColor = .clear
 
         let dispatcher = FlutterHostChannelDispatcher.shared
-        dispatcher.install(binaryMessenger: controller.binaryMessenger)
+        dispatcher.install(binaryMessenger: controller.binaryMessenger, kind: .embedded)
         dispatcher.updateHandlers(
+            kind: .embedded,
             onCloseCard: onClose,
             onCloseSideDrawer: onCloseSideDrawer
         )
-        dispatcher.sendSetData(arguments: initialData)
+        dispatcher.sendSetData(arguments: initialData, kind: .embedded)
         return controller
     }
     
@@ -315,12 +364,12 @@ struct FlutterFullscreenContainer: UIViewControllerRepresentable {
     let onClose: () -> Void
     
     func makeUIViewController(context: Context) -> FlutterViewController {
-        let controller = FlutterEngineHolder.shared.makeController()
+        let controller = FlutterEngineHolder.shared.makeController(for: .fullscreen)
 
         let dispatcher = FlutterHostChannelDispatcher.shared
-        dispatcher.install(binaryMessenger: controller.binaryMessenger)
-        dispatcher.updateHandlers(onCloseFullscreen: onClose)
-        dispatcher.sendSetData(arguments: initialData)
+        dispatcher.install(binaryMessenger: controller.binaryMessenger, kind: .fullscreen)
+        dispatcher.updateHandlers(kind: .fullscreen, onCloseFullscreen: onClose)
+        dispatcher.sendSetData(arguments: initialData, kind: .fullscreen)
         return controller
     }
     

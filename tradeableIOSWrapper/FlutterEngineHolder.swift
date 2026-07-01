@@ -2,22 +2,38 @@ import Flutter
 
 /// Internal engine manager - not exposed to consumers
 class FlutterEngineHolder {
-  static let shared = FlutterEngineHolder()
-  let engine: FlutterEngine
-  private(set) var controller: FlutterViewController?
-  private var isEngineRunning = false
-
-  private init() {
-    engine = FlutterEngine(name: "main_engine")
-    engine.run()
-    isEngineRunning = true
+  enum PresentationKind {
+    case embedded
+    case fullscreen
   }
 
-  func makeController() -> FlutterViewController {
-    if let existing = controller {
-      engine.viewController = nil
-      controller = nil
+  static let shared = FlutterEngineHolder()
+  let embeddedEngine: FlutterEngine
+  let fullscreenEngine: FlutterEngine
+  private(set) var embeddedController: FlutterViewController?
+  private(set) var fullscreenController: FlutterViewController?
+
+  private init() {
+    embeddedEngine = FlutterEngine(name: "embedded_engine")
+    fullscreenEngine = FlutterEngine(name: "fullscreen_engine")
+
+    embeddedEngine.run()
+    fullscreenEngine.run()
+  }
+
+  func engine(for kind: PresentationKind) -> FlutterEngine {
+    switch kind {
+    case .embedded:
+      return embeddedEngine
+    case .fullscreen:
+      return fullscreenEngine
     }
+  }
+
+  func makeController(for kind: PresentationKind) -> FlutterViewController {
+    detachController(for: kind)
+
+    let engine = engine(for: kind)
 
     let vc = FlutterViewController(
       engine: engine,
@@ -25,27 +41,32 @@ class FlutterEngineHolder {
       bundle: nil
     )
 
-    controller = vc
+    switch kind {
+    case .embedded:
+      embeddedController = vc
+    case .fullscreen:
+      fullscreenController = vc
+    }
+
     return vc
   }
 
-  func detachController() {
+  func detachController(for kind: PresentationKind) {
+    let engine = engine(for: kind)
     engine.viewController = nil
-    controller = nil
-  }
-  
-  /// Restart the Flutter engine
-  func restartEngine() {
-    if isEngineRunning {
-      engine.viewController = nil
-      controller = nil
+
+    switch kind {
+    case .embedded:
+      embeddedController = nil
+    case .fullscreen:
+      fullscreenController = nil
     }
   }
-  
+
   deinit {
-    if isEngineRunning {
-      engine.viewController = nil
-      controller = nil
-    }
+    embeddedEngine.viewController = nil
+    fullscreenEngine.viewController = nil
+    embeddedController = nil
+    fullscreenController = nil
   }
 }
