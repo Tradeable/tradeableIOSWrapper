@@ -7,6 +7,15 @@
 
 import Foundation
 import Flutter
+import os
+
+private let tfsLogger = Logger(subsystem: "tradeableIOSWrapper", category: "TFS")
+
+/// Logs to the unified log so entries survive the app being killed
+/// and can be read later with `log show --predicate 'subsystem == "tradeableIOSWrapper"'`.
+func tfsLog(_ message: String) {
+    tfsLogger.notice("\(message, privacy: .public)")
+}
 
 /// Public API for managing Flutter navigation and authentication
 public class TradeableFlutterNavigator {
@@ -33,7 +42,7 @@ public class TradeableFlutterNavigator {
     )
     
     private init() {
-        print("[TFS] TradeableFlutterNavigator initialized")
+        tfsLog("TradeableFlutterNavigator initialized")
     }
     
     public func initializeTFS(
@@ -43,12 +52,13 @@ public class TradeableFlutterNavigator {
         appId: String,
         clientId: String,
         publicKey: String,
+        progress: ((String) -> Void)? = nil,
         completion: @escaping (Bool, String?) -> Void
     ) {
-        print("[TFS] initializeTFS called")
-        print("[TFS] baseUrl: \(baseUrl)")
-        print("[TFS] appId: \(appId)")
-        print("[TFS] clientId: \(clientId)")
+        tfsLog("initializeTFS called")
+        tfsLog("baseUrl: \(baseUrl)")
+        tfsLog("appId: \(appId)")
+        tfsLog("clientId: \(clientId)")
 
         let params: [String: Any] = [
             "baseUrl": baseUrl,
@@ -59,38 +69,44 @@ public class TradeableFlutterNavigator {
             "publicKey": publicKey
         ]
 
-        let channels: [(String, FlutterMethodChannel)] = [
-            ("embedded", authChannel),
-            ("fullscreen", fullscreenAuthChannel)
-        ]
-
-        var successCount = 0
         var finished = false
 
-        for (label, channel) in channels {
-            retryInvoke(
-                channelLabel: label,
-                channel: channel,
-                method: "initializeTFS",
-                arguments: params
-            ) {
-                DispatchQueue.main.async {
-                    guard !finished else { return }
-                    successCount += 1
-                    if successCount == channels.count {
-                        finished = true
-                        print("[TFS] ✅ initializeTFS succeeded")
-                        completion(true, nil)
-                    }
-                }
-            } onFailure: { error in
-                DispatchQueue.main.async {
-                    guard !finished else { return }
-                    finished = true
-                    print("[TFS] ❌ initializeTFS failed: \(error)")
+        func finish(_ success: Bool, _ error: String?) {
+            DispatchQueue.main.async {
+                guard !finished else { return }
+                finished = true
+                if success {
+                    tfsLog("✅ initializeTFS succeeded")
+                    completion(true, nil)
+                } else {
+                    tfsLog("❌ initializeTFS failed: \(error ?? "Unknown error")")
                     completion(false, error)
                 }
             }
+        }
+
+        retryInvoke(
+            channelLabel: "embedded",
+            channel: authChannel,
+            method: "initializeTFS",
+            arguments: params,
+            onProgress: progress
+        ) {
+            finish(true, nil)
+        } onFailure: { error in
+            finish(false, error)
+        }
+
+        retryInvoke(
+            channelLabel: "fullscreen",
+            channel: fullscreenAuthChannel,
+            method: "initializeTFS",
+            arguments: params,
+            onProgress: progress
+        ) {
+            tfsLog("⚙️ fullscreen engine also initialized (background)")
+        } onFailure: { error in
+            tfsLog("⚠️ fullscreen engine not responding (non-fatal): \(error)")
         }
     }
 
@@ -102,11 +118,16 @@ public class TradeableFlutterNavigator {
         maxAttempts: Int = 20,
         retryDelay: TimeInterval = 0.5,
         watchdog: TimeInterval = 1.0,
+        onProgress: ((String) -> Void)? = nil,
         onSuccess: @escaping () -> Void,
         onFailure: @escaping (String) -> Void
     ) {
         var attempt = 0
         var completed = false
+
+        func report(_ message: String) {
+            onProgress?(message)
+        }
 
         func nextAttempt() {
             guard !completed, attempt < maxAttempts else {
@@ -121,7 +142,8 @@ public class TradeableFlutterNavigator {
             let currentAttempt = attempt
             var replyReceived = false
 
-            print("[TFS] \(channelLabel) attempt \(currentAttempt)/\(maxAttempts)")
+            tfsLog("\(channelLabel) attempt \(currentAttempt)/\(maxAttempts)")
+            report("\(channelLabel): attempt \(currentAttempt)/\(maxAttempts)…")
 
             channel.invokeMethod(method, arguments: arguments) { result in
                 DispatchQueue.main.async {
@@ -129,16 +151,19 @@ public class TradeableFlutterNavigator {
                     guard !completed, currentAttempt == attempt else { return }
 
                     if let error = result as? FlutterError {
-                        print("[TFS] \(channelLabel) ❌ attempt \(currentAttempt): \(error.message ?? "Unknown error")")
+                        tfsLog("\(channelLabel) ❌ attempt \(currentAttempt): \(error.message ?? "Unknown error")")
+                        report("\(channelLabel): attempt \(currentAttempt) error → \(error.message ?? "Unknown error")")
                         DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
                             nextAttempt()
                         }
                     } else if let success = result as? Bool, success {
-                        print("[TFS] \(channelLabel) ✅ succeeded on attempt \(currentAttempt)")
+                        tfsLog("\(channelLabel) ✅ succeeded on attempt \(currentAttempt)")
+                        report("\(channelLabel): ✅ ok on attempt \(currentAttempt)")
                         completed = true
                         onSuccess()
                     } else {
-                        print("[TFS] \(channelLabel) ⚠️ attempt \(currentAttempt) unexpected result: \(String(describing: result))")
+                        tfsLog("\(channelLabel) ⚠️ attempt \(currentAttempt) unexpected result: \(String(describing: result))")
+                        report("\(channelLabel): attempt \(currentAttempt) unexpected result")
                         DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
                             nextAttempt()
                         }
@@ -148,7 +173,8 @@ public class TradeableFlutterNavigator {
 
             DispatchQueue.main.asyncAfter(deadline: .now() + watchdog) {
                 guard !completed, currentAttempt == attempt, !replyReceived else { return }
-                print("[TFS] \(channelLabel) ⏳ attempt \(currentAttempt) got no reply (Dart still booting?) — retrying")
+                tfsLog("\(channelLabel) ⏳ attempt \(currentAttempt) got no reply (Dart still booting?) — retrying")
+                report("\(channelLabel): no reply to attempt \(currentAttempt) → retrying")
                 nextAttempt()
             }
         }
@@ -163,24 +189,24 @@ public class TradeableFlutterNavigator {
     ///   - route: The route name to navigate to
     ///   - arguments: Optional data to pass to the route
     public func navigateTo(_ route: String, arguments: [String: Any]? = nil) {
-        print("[TFS] navigateTo: \(route)")
+        tfsLog("navigateTo: \(route)")
         if let args = arguments {
-            print("[TFS] with arguments: \(args)")
+            tfsLog("with arguments: \(args)")
         }
         let params: [String: Any] = [
             "route": route,
             "arguments": arguments ?? [:]
         ]
         methodChannel.invokeMethod("navigateTo", arguments: params) { result in
-            print("[TFS] navigateTo completed for route: \(route)")
+            tfsLog("navigateTo completed for route: \(route)")
         }
     }
     
     /// Go back to the previous route
     public func goBack() {
-        print("[TFS] goBack called")
+        tfsLog("goBack called")
         methodChannel.invokeMethod("goBack", arguments: nil) { result in
-            print("[TFS] goBack completed")
+            tfsLog("goBack completed")
         }
     }
 
@@ -189,11 +215,11 @@ public class TradeableFlutterNavigator {
     ///   - pageId: The page or topic tag id to render in the drawer.
     ///   - arguments: Optional extra data to forward to Flutter.
     public func openTradeableSideDrawer(pageId: Int, arguments: [String: Any]? = nil) {
-        print("[TFS] openTradeableSideDrawer: \(pageId)")
+        tfsLog("openTradeableSideDrawer: \(pageId)")
         var params: [String: Any] = arguments ?? [:]
         params["pageId"] = pageId
         methodChannel.invokeMethod("openTradeableSideDrawer", arguments: params) { result in
-            print("[TFS] openTradeableSideDrawer completed for pageId: \(pageId)")
+            tfsLog("openTradeableSideDrawer completed for pageId: \(pageId)")
         }
     }
     
@@ -202,16 +228,16 @@ public class TradeableFlutterNavigator {
     ///   - route: The route name to navigate to
     ///   - arguments: Optional data to pass to the route
     public func replace(_ route: String, arguments: [String: Any]? = nil) {
-        print("[TFS] replace route: \(route)")
+        tfsLog("replace route: \(route)")
         if let args = arguments {
-            print("[TFS] with arguments: \(args)")
+            tfsLog("with arguments: \(args)")
         }
         let params: [String: Any] = [
             "route": route,
             "arguments": arguments ?? [:]
         ]
         methodChannel.invokeMethod("replaceRoute", arguments: params) { result in
-            print("[TFS] replace completed for route: \(route)")
+            tfsLog("replace completed for route: \(route)")
         }
     }
     
@@ -220,16 +246,16 @@ public class TradeableFlutterNavigator {
     ///   - route: The route name to navigate to
     ///   - arguments: Optional data to pass to the route
     public func popToRoot(_ route: String = "/", arguments: [String: Any]? = nil) {
-        print("[TFS] popToRoot: \(route)")
+        tfsLog("popToRoot: \(route)")
         if let args = arguments {
-            print("[TFS] with arguments: \(args)")
+            tfsLog("with arguments: \(args)")
         }
         let params: [String: Any] = [
             "route": route,
             "arguments": arguments ?? [:]
         ]
         methodChannel.invokeMethod("popToRoot", arguments: params) { result in
-            print("[TFS] popToRoot completed for route: \(route)")
+            tfsLog("popToRoot completed for route: \(route)")
         }
     }
     
@@ -237,22 +263,22 @@ public class TradeableFlutterNavigator {
     /// - Parameters:
     ///   - data: Dictionary of data to send
     public func sendData(_ data: [String: Any]) {
-        print("[TFS] sendData: \(data)")
+        tfsLog("sendData: \(data)")
         methodChannel.invokeMethod("receiveData", arguments: data) { result in
-            print("[TFS] sendData completed")
+            tfsLog("sendData completed")
         }
     }
     
     /// Register a handler for receiving data from Flutter
     /// - Parameter handler: Closure called when Flutter sends data
     public func registerDataHandler(_ handler: @escaping ([String: Any]) -> Void) {
-        print("[TFS] registerDataHandler called")
+        tfsLog("registerDataHandler called")
         let channels = [methodChannel, fullscreenMethodChannel]
 
         for channel in channels {
             channel.setMethodCallHandler { call, result in
                 if call.method == "sendData" {
-                    print("[TFS] Received data from Flutter: \(call.arguments ?? [:])")
+                    tfsLog("Received data from Flutter: \(call.arguments ?? [:])")
                     if let arguments = call.arguments as? [String: Any] {
                         handler(arguments)
                     }
