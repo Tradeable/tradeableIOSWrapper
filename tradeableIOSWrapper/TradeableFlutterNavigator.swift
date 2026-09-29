@@ -49,7 +49,7 @@ public class TradeableFlutterNavigator {
         print("[TFS] baseUrl: \(baseUrl)")
         print("[TFS] appId: \(appId)")
         print("[TFS] clientId: \(clientId)")
-        
+
         let params: [String: Any] = [
             "baseUrl": baseUrl,
             "authToken": authToken,
@@ -58,33 +58,102 @@ public class TradeableFlutterNavigator {
             "clientId": clientId,
             "publicKey": publicKey
         ]
-        
-        let authChannels = [authChannel, fullscreenAuthChannel]
-        var pendingResponses = authChannels.count
-        var firstError: String?
-        var allSucceeded = true
 
-        for channel in authChannels {
-            channel.invokeMethod("initializeTFS", arguments: params) { result in
-                if let error = result as? FlutterError {
-                    print("[TFS] ❌ initializeTFS failed: \(error.message ?? "Unknown error")")
-                    firstError = firstError ?? error.message
-                    allSucceeded = false
-                } else if let success = result as? Bool, !success {
-                    allSucceeded = false
-                }
+        let channels: [(String, FlutterMethodChannel)] = [
+            ("embedded", authChannel),
+            ("fullscreen", fullscreenAuthChannel)
+        ]
 
-                pendingResponses -= 1
-                if pendingResponses == 0 {
-                    if allSucceeded {
+        var successCount = 0
+        var finished = false
+
+        for (label, channel) in channels {
+            retryInvoke(
+                channelLabel: label,
+                channel: channel,
+                method: "initializeTFS",
+                arguments: params
+            ) {
+                DispatchQueue.main.async {
+                    guard !finished else { return }
+                    successCount += 1
+                    if successCount == channels.count {
+                        finished = true
                         print("[TFS] ✅ initializeTFS succeeded")
                         completion(true, nil)
-                    } else {
-                        completion(false, firstError)
                     }
+                }
+            } onFailure: { error in
+                DispatchQueue.main.async {
+                    guard !finished else { return }
+                    finished = true
+                    print("[TFS] ❌ initializeTFS failed: \(error)")
+                    completion(false, error)
                 }
             }
         }
+    }
+
+    private func retryInvoke(
+        channelLabel: String,
+        channel: FlutterMethodChannel,
+        method: String,
+        arguments: Any?,
+        maxAttempts: Int = 20,
+        retryDelay: TimeInterval = 0.5,
+        watchdog: TimeInterval = 1.0,
+        onSuccess: @escaping () -> Void,
+        onFailure: @escaping (String) -> Void
+    ) {
+        var attempt = 0
+        var completed = false
+
+        func nextAttempt() {
+            guard !completed, attempt < maxAttempts else {
+                if !completed {
+                    completed = true
+                    onFailure("Timed out after \(attempt) attempts on \(channelLabel) channel")
+                }
+                return
+            }
+
+            attempt += 1
+            let currentAttempt = attempt
+            var replyReceived = false
+
+            print("[TFS] \(channelLabel) attempt \(currentAttempt)/\(maxAttempts)")
+
+            channel.invokeMethod(method, arguments: arguments) { result in
+                DispatchQueue.main.async {
+                    replyReceived = true
+                    guard !completed, currentAttempt == attempt else { return }
+
+                    if let error = result as? FlutterError {
+                        print("[TFS] \(channelLabel) ❌ attempt \(currentAttempt): \(error.message ?? "Unknown error")")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
+                            nextAttempt()
+                        }
+                    } else if let success = result as? Bool, success {
+                        print("[TFS] \(channelLabel) ✅ succeeded on attempt \(currentAttempt)")
+                        completed = true
+                        onSuccess()
+                    } else {
+                        print("[TFS] \(channelLabel) ⚠️ attempt \(currentAttempt) unexpected result: \(String(describing: result))")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
+                            nextAttempt()
+                        }
+                    }
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + watchdog) {
+                guard !completed, currentAttempt == attempt, !replyReceived else { return }
+                print("[TFS] \(channelLabel) ⏳ attempt \(currentAttempt) got no reply (Dart still booting?) — retrying")
+                nextAttempt()
+            }
+        }
+
+        nextAttempt()
     }
     
     // MARK: - Navigation
