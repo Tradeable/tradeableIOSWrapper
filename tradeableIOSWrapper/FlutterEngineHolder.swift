@@ -19,6 +19,25 @@ class FlutterEngineHolder {
 
     embeddedEngine.run()
     fullscreenEngine.run()
+
+    registerPlugins(for: embeddedEngine, label: "embedded")
+    registerPlugins(for: fullscreenEngine, label: "fullscreen")
+  }
+
+  private func registerPlugins(for engine: FlutterEngine, label: String) {
+    guard let registrantClass: AnyClass = NSClassFromString("GeneratedPluginRegistrant") else {
+      tfsLog("⚠️ GeneratedPluginRegistrant not found — plugins (webview, url_launcher) unavailable on \(label) engine")
+      return
+    }
+    let selector = NSSelectorFromString("registerWithRegistry:")
+    guard let method = class_getClassMethod(registrantClass, selector) else {
+      tfsLog("⚠️ GeneratedPluginRegistrant has no registerWithRegistry: — plugins unavailable on \(label) engine")
+      return
+    }
+    typealias RegisterFn = @convention(c) (AnyClass, Selector, FlutterEngine) -> Void
+    let register = unsafeBitCast(method_getImplementation(method), to: RegisterFn.self)
+    register(registrantClass, selector, engine)
+    tfsLog("🔌 plugins registered on \(label) engine")
   }
 
   func engine(for kind: PresentationKind) -> FlutterEngine {
