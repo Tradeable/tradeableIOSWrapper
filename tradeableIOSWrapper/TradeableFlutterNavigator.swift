@@ -11,15 +11,14 @@ import os
 
 private let tfsLogger = Logger(subsystem: "tradeableIOSWrapper", category: "TFS")
 
-/// Logs to the unified log so entries survive the app being killed
-/// and can be read later with `log show --predicate 'subsystem == "tradeableIOSWrapper"'`.
 func tfsLog(_ message: String) {
     tfsLogger.notice("\(message, privacy: .public)")
 }
 
-/// Public API for managing Flutter navigation and authentication
 public class TradeableFlutterNavigator {
     public static let shared = TradeableFlutterNavigator()
+
+    public static let version = "1.0.4"
     
     private lazy var methodChannel = FlutterMethodChannel(
         name: "embedded_flutter/navigation",
@@ -42,7 +41,7 @@ public class TradeableFlutterNavigator {
     )
     
     private init() {
-        tfsLog("TradeableFlutterNavigator initialized")
+        tfsLog("wrapper \(TradeableFlutterNavigator.version) loaded")
     }
     
     public func initializeTFS(
